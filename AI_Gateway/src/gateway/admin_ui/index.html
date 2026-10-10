@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gateway Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js for usage graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob primary"></div>
+        <div class="blob secondary"></div>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                <h2>Gateway</h2>
+            </div>
+            <nav>
+                <a href="#" class="nav-item active" data-target="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item" data-target="cache">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    Cache
+                </a>
+                <a href="#" class="nav-item" data-target="analytics">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+                    Analytics
+                </a>
+                <a href="#" class="nav-item" data-target="keys">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                    API Keys
+                </a>
+                <a href="#" class="nav-item" data-target="models">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    Models
+                </a>
+                <a href="#" class="nav-item" data-target="routes">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.5 7.5L15 15"/><path d="M11 6h7v7"/></svg>
+                    Routes
+                </a>
+                <a href="#" class="nav-item" data-target="health">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Health
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <section id="dashboard" class="view active">
+                <header>
+                    <h1>Overview</h1>
+                    <p class="subtitle">Real-time metrics and usage analytics</p>
+                </header>
+
+                <div class="metrics-grid">
+                    <div class="metric-card glass-panel pop-in" style="--delay: 0.1s">
+                        <h3>Total Requests</h3>
+                        <div class="value" id="val-requests">-</div>
+                    </div>
+                    <div class="metric-card glass-panel pop-in" style="--delay: 0.2s">
+                        <h3>Tokens Processed</h3>
+                        <div class="value" id="val-tokens">-</div>
+                    </div>
+                    <div class="metric-card glass-panel pop-in" style="--delay: 0.3s">
+                        <h3>Total Cost (30d)</h3>
+                        <div class="value accent" id="val-cost">$-</div>
+                    </div>
+                    <div class="metric-card glass-panel pop-in" style="--delay: 0.35s">
+                        <h3>TPM now</h3>
+                        <div class="value" id="val-tpm">-</div>
+                    </div>
+                    <div class="metric-card glass-panel pop-in" style="--delay: 0.4s">
+                        <h3>RPM now</h3>
+                        <div class="value" id="val-rpm">-</div>
+                    </div>
+                    <div class="metric-card glass-panel pop-in" style="--delay: 0.45s">
+                        <h3>Quota</h3>
+                        <div class="value" id="val-quota">-%</div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid" id="named-budget-grid"></div>
+
+                <div class="charts-grid">
+                    <div class="chart-container glass-panel fade-up" style="--delay: 0.4s">
+                        <h3>TPM & RPM (15m)</h3>
+                        <canvas id="sparklineChart"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel fade-up" style="--delay: 0.45s">
+                        <h3>Requests & spend</h3>
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel fade-up" style="--delay: 0.5s">
+                        <h3>Cost by Model</h3>
+                        <canvas id="modelChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="cache" class="view">
+                <header>
+                    <h1>Cache & named budgets</h1>
+                    <p class="subtitle">Exact vs semantic hits today, plus agent daily $ buckets</p>
+                </header>
+                <div class="metrics-grid">
+                    <div class="metric-card glass-panel">
+                        <h3>Exact hits</h3>
+                        <div class="value" id="cache-exact">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Semantic hits</h3>
+                        <div class="value" id="cache-semantic">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Misses</h3>
+                        <div class="value" id="cache-miss">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Hit rate</h3>
+                        <div class="value" id="cache-rate">-</div>
+                    </div>
+                </div>
+                <div class="glass-panel" style="padding:1.5rem;margin-top:1.5rem;">
+                    <h3>Store</h3>
+                    <pre id="cache-store" class="mono-block">—</pre>
+                </div>
+                <div class="metrics-grid" id="cache-budget-grid" style="margin-top:1.5rem;"></div>
+            </section>
+
+            <section id="analytics" class="view">
+                <header class="flex-between analytics-header">
+                    <div>
+                        <h1>Analytics</h1>
+                        <p class="subtitle">Throughput, cost, routing, latency, and quotas</p>
+                    </div>
+                    <div class="range-chips" id="analytics-range">
+                        <button type="button" class="chip" data-range="15m">15m</button>
+                        <button type="button" class="chip" data-range="1h">1h</button>
+                        <button type="button" class="chip active" data-range="24h">24h</button>
+                        <button type="button" class="chip" data-range="7d">7d</button>
+                        <button type="button" class="chip" data-range="30d">30d</button>
+                    </div>
+                </header>
+
+                <div class="filter-bar glass-panel">
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <select id="analytics-provider">
+                            <option value="">All providers</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Model</label>
+                        <select id="analytics-model">
+                            <option value="">All models</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Project</label>
+                        <select id="analytics-project">
+                            <option value="">All projects</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="metrics-grid analytics-kpis">
+                    <div class="metric-card glass-panel">
+                        <h3>Requests</h3>
+                        <div class="value" id="an-requests">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Tokens</h3>
+                        <div class="value" id="an-tokens">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Spend</h3>
+                        <div class="value accent" id="an-cost">$-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Cache hit</h3>
+                        <div class="value" id="an-cache">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Fallbacks</h3>
+                        <div class="value" id="an-fallbacks">-</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <h3>Cache saved</h3>
+                        <div class="value" id="an-saved">$-</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid analytics-grid">
+                    <div class="chart-container glass-panel">
+                        <h3>TPM + RPM</h3>
+                        <canvas id="an-throughput"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Tokens by type</h3>
+                        <canvas id="an-token-types"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel span-2">
+                        <h3>Tokens by model</h3>
+                        <canvas id="an-tokens-model"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Requests + spend</h3>
+                        <canvas id="an-cost-time"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Cumulative spend vs budget</h3>
+                        <canvas id="an-budget"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Cost by model</h3>
+                        <canvas id="an-cost-model"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Cost by provider</h3>
+                        <canvas id="an-cost-provider"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Chargeback by project</h3>
+                        <canvas id="an-cost-project"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Chargeback by agent</h3>
+                        <canvas id="an-cost-agent"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Traffic by model</h3>
+                        <canvas id="an-model-traffic"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Route strategy mix</h3>
+                        <canvas id="an-route-mix"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Traffic mix %</h3>
+                        <canvas id="an-traffic-mix"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Fallbacks & 429s</h3>
+                        <canvas id="an-fallbacks-chart"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Latency p50 / p95</h3>
+                        <canvas id="an-latency"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Errors vs success</h3>
+                        <canvas id="an-errors"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h3>Cache hit rate</h3>
+                        <canvas id="an-cache-chart"></canvas>
+                    </div>
+                    <div class="chart-container glass-panel span-2">
+                        <h3>Live TPM vs cap</h3>
+                        <canvas id="an-quota"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Keys View -->
+            <section id="keys" class="view">
+                <header class="flex-between">
+                    <div>
+                        <h1>Virtual Keys</h1>
+                        <p class="subtitle">Manage authentication and routing budgets</p>
+                    </div>
+                    <button class="btn btn-primary glow" id="btn-create-key">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Create Key
+                    </button>
+                </header>
+
+                <div class="keys-table-container glass-panel fade-up" style="--delay: 0.1s">
+                    <table class="keys-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Prefix</th>
+                                <th>Project ID</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keys-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Models View -->
+            <section id="models" class="view">
+                <header class="flex-between">
+                    <div>
+                        <h1>Model Registry</h1>
+                        <p class="subtitle">Register models and provider API keys without restarting the gateway</p>
+                    </div>
+                    <button class="btn btn-primary glow" id="btn-add-model">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Model
+                    </button>
+                </header>
+
+                <div class="keys-table-container glass-panel fade-up" style="--delay: 0.1s">
+                    <table class="keys-table">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Model Name</th>
+                                <th>Key</th>
+                                <th>TPM now / cap</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="models-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="routes" class="view">
+                <header class="flex-between">
+                    <div>
+                        <h1>Routing Rules</h1>
+                        <p class="subtitle">Fallback chains and tag-based routes</p>
+                    </div>
+                    <button class="btn btn-primary glow" id="btn-save-routes">Save Routes</button>
+                </header>
+                <div class="glass-panel" style="padding:1.5rem;">
+                    <label>Routes YAML (JSON)</label>
+                    <textarea id="routes-editor" rows="18"></textarea>
+                    <div id="routes-status" class="subtitle" style="margin-top:0.75rem;"></div>
+                </div>
+            </section>
+
+            <section id="health" class="view">
+                <header>
+                    <h1>Provider Health</h1>
+                    <p class="subtitle">Circuit breakers, live TPM, and recent fallbacks</p>
+                </header>
+                <div class="keys-table-container glass-panel">
+                    <table class="keys-table">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Healthy</th>
+                                <th>Breaker</th>
+                            </tr>
+                        </thead>
+                        <tbody id="health-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="glass-panel" style="margin-top:1.5rem;padding:1.5rem;">
+                    <h3>Recent routes</h3>
+                    <pre id="recent-routes" class="mono-block">—</pre>
+                </div>
+                <div class="glass-panel" style="margin-top:1.5rem;padding:1.5rem;">
+                    <h3>Alert webhooks</h3>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;">
+                            <input type="url" id="webhook-url" placeholder="https://example.com/hooks/gateway">
+                        </div>
+                        <button class="btn btn-secondary" id="btn-add-webhook" type="button">Add</button>
+                    </div>
+                    <ul id="webhook-list"></ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="add-model-modal">
+        <div class="modal glass-panel modal-wide">
+            <div class="modal-header">
+                <h2>Add Model</h2>
+                <button class="btn-close" id="btn-close-model-modal">&times;</button>
+            </div>
+            <form id="add-model-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <select id="model-provider">
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="gemini">Gemini</option>
+                            <option value="local">Local (Ollama)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Model ID</label>
+                        <input type="text" id="model-id" required placeholder="gpt-4o-mini">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="model-api-key" placeholder="Provider secret (never shown again)">
+                </div>
+                <div class="form-group">
+                    <label>Base URL (optional)</label>
+                    <input type="text" id="model-base-url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Provider RPM</label>
+                        <input type="number" id="model-rpm" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Provider TPM</label>
+                        <input type="number" id="model-tpm" value="100000">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Input $/1M</label>
+                        <input type="number" step="0.0001" id="model-in-price" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Output $/1M</label>
+                        <input type="number" step="0.0001" id="model-out-price" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-test-model">Test connection</button>
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-model-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary glow">Save</button>
+                </div>
+                <div id="model-form-status" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="create-key-modal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Create Virtual Key</h2>
+                <button class="btn-close" id="btn-close-modal">&times;</button>
+            </div>
+            <form id="create-key-form">
+                <div class="form-group">
+                    <label>Key Name</label>
+                    <input type="text" id="key-name" required placeholder="e.g. Production Logistics Agent">
+                </div>
+                <div class="form-group">
+                    <label>Project ID</label>
+                    <input type="text" id="key-project" value="default">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>RPM Limit</label>
+                        <input type="number" id="key-rpm" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label>TPM Limit</label>
+                        <input type="number" id="key-tpm" value="100000">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary glow">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="show-key-modal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Key Created!</h2>
+                <button class="btn-close" id="btn-close-show-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="warning-text">Please copy this key now. You will not be able to see it again.</p>
+                <div class="key-display-box">
+                    <code id="new-raw-key"></code>
+                    <button class="btn btn-icon" id="btn-copy-key" title="Copy to clipboard">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary glow" id="btn-done-modal">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Overlay (For demo purposes, asks for admin key) -->
+    <div class="auth-overlay active" id="auth-overlay">
+        <div class="auth-box glass-panel">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <h2>Admin Login</h2>
+            <p>Enter the Gateway Admin Key to continue.</p>
+            <div class="form-group">
+                <input type="password" id="admin-key-input" placeholder="Admin Key (Leave empty in Dev mode)" autocomplete="off">
+            </div>
+            <button class="btn btn-primary glow w-100" id="btn-login">Connect</button>
+            <div id="login-error" class="error-msg"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

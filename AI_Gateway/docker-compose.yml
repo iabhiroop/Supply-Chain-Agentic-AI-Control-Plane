@@ -1,0 +1,70 @@
+# Gateway-only (Postgres + Redis + OTEL + this service).
+# For the full six-layer sitting, use the repo-root docker-compose.yml instead.
+# Do not run this file and the root compose at the same time (both bind :5432).
+
+version: "3.8"
+
+services:
+  gateway:
+    build: .
+    ports:
+      - "8000:8000"
+    # Load GATEWAY_* from local .env (Compose does NOT inject .env into
+    # the container unless env_file or environment is set).
+    env_file:
+      - .env
+    environment:
+      # Docker-network overrides: .env typically points at localhost, which
+      # is wrong inside the container. These win over env_file.
+      GATEWAY_DATABASE_URL: postgresql+asyncpg://gateway_user:gateway_pass@postgres:5432/ai_gateway
+      GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_OTEL_ENDPOINT: http://otel-collector:4317
+      GATEWAY_OLLAMA_BASE_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - gateway_network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=gateway_user
+      - POSTGRES_PASSWORD=gateway_pass
+      - POSTGRES_DB=ai_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gateway_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - gateway_network
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+    networks:
+      - gateway_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  gateway_network:
+    driver: bridge

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-gateway
+  labels:
+    app: ai-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-gateway
+  template:
+    metadata:
+      labels:
+        app: ai-gateway
+    spec:
+      containers:
+        - name: gateway
+          image: ai-gateway:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: GATEWAY_HOST
+              value: "0.0.0.0"
+            - name: GATEWAY_PORT
+              value: "8000"
+            - name: GATEWAY_DATABASE_URL
+              value: postgresql+asyncpg://gateway:gateway@postgres:5432/ai_gateway
+            - name: GATEWAY_REDIS_URL
+              value: redis://redis:6379/0
+            - name: GATEWAY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-gateway-secrets
+                  key: secret-key
+            - name: GATEWAY_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-gateway-secrets
+                  key: admin-key
+            - name: GATEWAY_GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-gateway-secrets
+                  key: gemini-api-key
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-gateway
+spec:
+  selector:
+    app: ai-gateway
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http

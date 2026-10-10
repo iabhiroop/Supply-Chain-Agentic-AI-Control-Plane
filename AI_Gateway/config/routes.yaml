@@ -1,0 +1,89 @@
+# =============================================================================
+# AI Gateway — Default Routing Rules
+# =============================================================================
+# Rules are evaluated in priority order (lower number = higher priority).
+# First matching rule wins. If no rule matches, the default route is used.
+
+# NOTE: every model named here must exist in config/models.yaml, otherwise the
+# route cannot resolve and the request fails. The previous version of this file
+# referenced gemini-2.5-flash / gemini-2.5-pro / gemini-2.0-flash / gemma3,
+# none of which are in the catalogue.
+default_route:
+  provider: "gemini"
+  model: "gemini-3.5-flash-lite"
+  strategy: "static"
+
+rules:
+  # High-priority: compliance-related agents always use the best model
+  - name: "compliance-agent-routing"
+    priority: 10
+    strategy: "static"
+    conditions:
+      agent_tags:
+        - "compliance"
+        - "audit"
+    target:
+      provider: "gemini"
+      model: "gemini-3.8-flash"
+
+  # Cost savings: X-Route-Hint: cheap (Taiwan narration) uses cheapest active chat model
+  - name: "cheap-route-hint"
+    priority: 18
+    strategy: "cost_optimized"
+    conditions:
+      headers:
+        x-route-hint: "cheap"
+    target:
+      provider: "gemini"
+      model: "gemini-3.5-flash-lite"
+
+  # Cost savings: simple extraction tasks use cheaper models
+  - name: "simple-extraction-routing"
+    priority: 20
+    strategy: "cost_optimized"
+    conditions:
+      agent_tags:
+        - "extraction"
+        - "classification"
+    target:
+      provider: "gemini"
+      model: "gemini-3.5-flash-lite"
+
+  # Privacy: sensitive data routes to a local model
+  - name: "sensitive-data-routing"
+    priority: 15
+    strategy: "static"
+    conditions:
+      headers:
+        x-data-sensitivity: "high"
+    target:
+      provider: "local"
+      model: "llama3.2:latest"
+
+  # Fallback chain: if the primary model fails or is rate limited, try
+  # alternatives. Ordered so the next hop is a *different* quota bucket:
+  # gemini-3.5-flash's free tier is only 5 requests/minute, so falling back to
+  # another gemini-3.x model would often hit the same wall.
+  - name: "gemini-to-local-fallback"
+    priority: 100
+    strategy: "fallback"
+    fallback_chain:
+      - provider: "gemini"
+        model: "gemini-3.5-flash-lite"
+      - provider: "gemini"
+        model: "gemma-4-31b-it"
+      - provider: "local"
+        model: "llama3.2:latest"
+
+  # Local Ollama → Gemini when the local hop fails. This chain is executed in
+  # gateway _provider_call (not by RequestRouter, which only registers "static").
+  # Applies to any request already routed to provider "local" (e.g. gemma4:e2b),
+  # except sensitive-data-routing / x-data-sensitivity: high (fail closed).
+  - name: "local-to-gemini-fallback"
+    priority: 101
+    strategy: "fallback"
+    fallback_chain:
+      - provider: "local"
+        model: "gemma4:e2b"
+      - provider: "gemini"
+        model: "gemini-3.5-flash-lite"
