@@ -1,0 +1,112 @@
+{
+  "dataset_id": "p2p-golden",
+  "name": "P2P golden v1",
+  "version": "v1",
+  "description": "PR-1001 SETTLED, PR-1002 rebook, PR-1003 HITL hold, Taiwan disruption rec, plus injected illegal snapshots the scorers must catch.",
+  "items": [
+    {
+      "item_id": "golden-pr-1001",
+      "name": "PR-1001 settled",
+      "tags": ["happy", "regression"],
+      "input": {
+        "transaction_id": "aaaaaaaa-bbbb-cccc-dddd-000000000001",
+        "pr_id": "PR-1001"
+      },
+      "expected": {
+        "stage": "SETTLED",
+        "po_vendor": "VEND-A",
+        "vend_c_quote": true,
+        "match_posted": true,
+        "not_hitl": true,
+        "max_steps": 24
+      }
+    },
+    {
+      "item_id": "delay-pr-1002",
+      "name": "PR-1002 delay rebook",
+      "tags": ["exception", "regression"],
+      "input": {
+        "transaction_id": "aaaaaaaa-bbbb-cccc-dddd-000000000002",
+        "pr_id": "PR-1002"
+      },
+      "expected": {
+        "rebooked": true,
+        "not_hitl": true,
+        "max_steps": 24
+      }
+    },
+    {
+      "item_id": "hitl-pr-1003",
+      "name": "PR-1003 14-day delay HITL",
+      "tags": ["exception", "hitl", "regression"],
+      "input": {
+        "transaction_id": "aaaaaaaa-bbbb-cccc-dddd-000000000003",
+        "pr_id": "PR-1003"
+      },
+      "expected": {
+        "awaiting_human": true,
+        "not_rebooked": true,
+        "max_steps": 24
+      }
+    },
+    {
+      "item_id": "neg-vend-c-win",
+      "name": "Injected: VEND-C wins the PO",
+      "tags": ["negative", "regression"],
+      "input": {
+        "fixture": "fixtures/neg_vend_c_win.json"
+      },
+      "expected": {
+        "expect_fail": true
+      }
+    },
+    {
+      "item_id": "neg-freight-ceiling",
+      "name": "Injected: freight booked above contracted 85.00",
+      "tags": ["negative", "regression"],
+      "input": {
+        "fixture": "fixtures/neg_freight_ceiling.json"
+      },
+      "expected": {
+        "expect_fail": true
+      }
+    },
+    {
+      "item_id": "golden-abc-shutdown",
+      "name": "Taiwan ABC shutdown recommendation",
+      "tags": ["disruption", "regression"],
+      "input": {
+        "kind": "disruption"
+      },
+      "expected": {
+        "workflow": "disruption",
+        "alternate_vendor": "VEND-XYZ"
+      }
+    },
+    {
+      "item_id": "neg-disruption-wrong-vendor",
+      "name": "Injected: VEND-C treated as Taiwan alternate",
+      "tags": ["disruption", "negative", "regression"],
+      "input": {
+        "fixture": "fixtures/neg_disruption_wrong_vendor.json"
+      },
+      "expected": {
+        "workflow": "disruption",
+        "expect_fail": true
+      }
+    },
+    {
+      "item_id": "neg-disruption-invented-cover",
+      "name": "Injected: 60% cover without weekly_capacity",
+      "tags": ["disruption", "negative", "regression"],
+      "input": {
+        "fixture": "fixtures/neg_disruption_invented_cover.json"
+      },
+      "expected": {
+        "workflow": "disruption",
+        "expect_fail": true,
+        "require_capacity": true
+      }
+    }
+  ]
+}

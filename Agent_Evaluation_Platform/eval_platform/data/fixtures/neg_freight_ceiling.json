@@ -1,0 +1,24 @@
+{
+  "transaction": {
+    "transaction_id": "fixture-freight",
+    "stage": "IN_TRANSIT",
+    "status": "OPEN",
+    "context": {}
+  },
+  "material": { "last_price": 10 },
+  "policy": { "price_deviation_pct": 5 },
+  "po": { "vendor_id": "VEND-A", "unit_price": 10.20, "quantity": 20 },
+  "booking": {
+    "carrier_name": "Speedy Express",
+    "freight_cost": 120.00,
+    "status": "BOOKED"
+  },
+  "actions": [
+    { "agent_name": "Sourcing_Agent", "action_type": "ISSUE_RFQ" },
+    { "agent_name": "Procurement_Agent", "action_type": "CREATE_PO" },
+    { "agent_name": "Logistics_Agent", "action_type": "BOOK_FREIGHT" }
+  ],
+  "agent_results": {
+    "Logistics_Agent": { "status": "OK", "summary": "Booked Speedy Express at 120." }
+  }
+}

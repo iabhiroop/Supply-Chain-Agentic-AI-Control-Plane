@@ -1,0 +1,4 @@
+FREIGHT INVOICE FR-1001
+Carrier Speedy Express
+Amount 85.00
+Related booking BK-1001

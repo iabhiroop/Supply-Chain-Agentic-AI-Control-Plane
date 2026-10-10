@@ -1,0 +1,8 @@
+{
+  "type": "edi214",
+  "events": [
+    {"event_code": "PICKUP", "detail": "Trailer hooked"},
+    {"event_code": "IN_TRANSIT", "detail": "Departed origin"},
+    {"event_code": "DELIVERED", "detail": "POD signed at WH-FR-01"}
+  ]
+}

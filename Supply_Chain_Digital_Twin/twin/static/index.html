@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Digital Twin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Keep tokens in sync with AI_Gateway/src/gateway/admin_ui/style.css */
+    :root {
+      --bg-dark: #0f111a;
+      --bg-panel: rgba(25, 28, 41, 0.6);
+      --text-main: #f0f2f8;
+      --text-muted: #8b92a5;
+      --primary: #6366f1;
+      --secondary: #ec4899;
+      --accent: #14b8a6;
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --font-family: "Outfit", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14.5px/1.45 var(--font-family); color: var(--text-main); background: var(--bg-dark); min-height: 100vh; overflow-x: hidden; }
+    .background-blobs { position: fixed; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; }
+    .blob { position: absolute; filter: blur(80px); opacity: 0.4; border-radius: 50%; animation: float 20s ease-in-out infinite alternate; }
+    .blob.primary { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); }
+    .blob.secondary { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, var(--secondary) 0%, transparent 70%); animation-delay: -10s; }
+    @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(5%, 10%) scale(1.1); } }
+    header {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+      color: #fff; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center;
+    }
+    header a { color: var(--accent); }
+    main { padding: 20px 22px 48px; max-width: 1040px; position: relative; z-index: 1; }
+    .muted { color: var(--text-muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .panel {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    .panel h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--glass-border); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--glass-border); font-size: 13px; }
+    th { color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; background: rgba(0,0,0,0.1); }
+    code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--accent); }
+    .tools { padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .tools span { background: rgba(20, 184, 166, 0.15); color: var(--accent); padding: 3px 8px; border-radius: 999px; font-size: 12px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="background-blobs" aria-hidden="true">
+    <div class="blob primary"></div>
+    <div class="blob secondary"></div>
+  </div>
+  <header>
+    <div>
+      <div class="muted" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase">Digital Twin</div>
+      <strong>World snapshot</strong>
+    </div>
+    <a href="http://127.0.0.1:8010/">Open sitting UI</a>
+  </header>
+  <main>
+    <p class="muted">Read-only facts from the disruption pack. Sitting UI is the Operating Platform.</p>
+    <div class="grid">
+      <div class="panel">
+        <h3>Plants at risk (VEND-ABC)</h3>
+        <div id="plants"></div>
+      </div>
+      <div class="panel">
+        <h3>Days of cover (MAT-SEMI-1)</h3>
+        <div id="cover"></div>
+      </div>
+      <div class="panel">
+        <h3>Open POs (VEND-ABC)</h3>
+        <div id="pos"></div>
+      </div>
+      <div class="panel">
+        <h3>News</h3>
+        <div id="news"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>MCP tools</h3>
+      <div class="tools" id="mcp"></div>
+    </div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function table(headers, rows) {
+      if (!rows.length) return "<p class='muted' style='padding:12px'>None.</p>";
+      return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    }
+    async function get(path) {
+      const r = await fetch(path);
+      if (!r.ok) return null;
+      return r.json();
+    }
+    async function load() {
+      const [plants, cover, pos, news, mcp] = await Promise.all([
+        get("/v1/twin/plants-at-risk"),
+        get("/v1/twin/inventory/days-of-cover?material=MAT-SEMI-1"),
+        get("/v1/twin/pos/open?vendor=VEND-ABC"),
+        get("/v1/twin/signals/news?entity=VEND-ABC"),
+        get("/v1/mcp/tools"),
+      ]);
+      $("plants").innerHTML = plants
+        ? table(["Plant", "Cover", "Open qty from ABC"], (plants.plants || []).map((p) =>
+            `<tr><td><code>${p.plant_id}</code></td><td>${p.days_of_cover ?? "—"}d</td><td>${p.open_qty_from_abc ?? "—"}</td></tr>`))
+        : "<p class='muted' style='padding:12px'>Unavailable.</p>";
+      $("cover").innerHTML = cover
+        ? table(["Plant", "Cover"], (cover.positions || []).map((p) =>
+            `<tr><td><code>${p.plant_id}</code></td><td>${p.days_of_cover ?? "—"}d</td></tr>`))
+        : "<p class='muted' style='padding:12px'>Unavailable.</p>";
+      $("pos").innerHTML = pos
+        ? table(["PO", "Qty", "Status"], (pos.purchase_orders || []).map((p) =>
+            `<tr><td><code>${p.po_id}</code></td><td>${p.quantity ?? "—"}</td><td>${p.status || ""}</td></tr>`))
+        : "<p class='muted' style='padding:12px'>Unavailable.</p>";
+      $("news").innerHTML = news
+        ? table(["Signal", "Headline"], (news.signals || []).map((n) =>
+            `<tr><td><code>${n.signal_id || ""}</code></td><td>${n.headline || n.title || ""}</td></tr>`))
+        : "<p class='muted' style='padding:12px'>Unavailable.</p>";
+      $("mcp").innerHTML = (mcp && mcp.tools || []).map((t) => `<span>${t.name || t}</span>`).join("") || "<span class='muted'>None</span>";
+    }
+    load();
+  </script>
+</body>
+</html>

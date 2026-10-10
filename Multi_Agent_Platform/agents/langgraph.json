@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "langchain",
+    "langgraph"
+  ],
+  "graphs": {
+    "agent": "agents/graph/graph.py:orchestrator_app"
+  },
+  "env": ".env"
+}

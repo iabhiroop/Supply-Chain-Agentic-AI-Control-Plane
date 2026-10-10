@@ -1,0 +1,12 @@
+{
+  "signal_id": "NEWS-ABC-SHUTDOWN",
+  "headline": "Taiwan Semiconductor Components announces 14-day production shutdown",
+  "payload": {
+    "vendor_id": "VEND-ABC",
+    "country": "Taiwan",
+    "event": "production_shutdown",
+    "duration_days": 14,
+    "material_id": "MAT-SEMI-1",
+    "summary": "A major supplier in Taiwan (VEND-ABC) has announced a production shutdown lasting 14 days. Open purchase orders for MAT-SEMI-1 are at risk."
+  }
+}

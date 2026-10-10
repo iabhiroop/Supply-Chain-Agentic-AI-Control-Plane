@@ -1,0 +1,262 @@
+# Full laptop stack. From the repo root:
+#   docker compose up -d --build
+# Gateway-only compose remains in AI_Gateway/docker-compose.yml (do not run both).
+
+name: logistics-scm
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: gateway_user
+      POSTGRES_PASSWORD: gateway_pass
+      POSTGRES_DB: ai_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init-databases.sql:/docker-entrypoint-initdb.d/02-logistics.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_user -d ai_gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [scm]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [scm]
+
+  neo4j:
+    image: neo4j:5.12.0-community
+    container_name: logistics_neo4j
+    hostname: logistics_neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_max__size: 512M
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks: [scm]
+
+  bootstrap:
+    image: logistics-scm-bootstrap:local
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.bootstrap
+    environment:
+      SCM_PG_HOST: postgres
+      SCM_PG_DATABASE: logistics_scm
+      TWIN_LAYER2_ROOT: /app/Multi_Agent_Platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [scm]
+
+  gateway:
+    image: logistics-scm-gateway:local
+    build:
+      context: ./AI_Gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: ./AI_Gateway/.env
+        required: false
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: 8000
+      GATEWAY_DATABASE_URL: postgresql+asyncpg://gateway_user:gateway_pass@postgres:5432/ai_gateway
+      GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_OLLAMA_BASE_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [scm]
+
+  twin:
+    image: logistics-scm-twin:local
+    build:
+      context: .
+      dockerfile: Supply_Chain_Digital_Twin/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      TWIN_HOST: 0.0.0.0
+      SCM_PG_HOST: postgres
+      SCM_GRAPHRAG_URL: http://graphrag:8100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [scm]
+
+  layer2:
+    image: logistics-scm-layer2:local
+    build:
+      context: .
+      dockerfile: Multi_Agent_Platform/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - path: ./Multi_Agent_Platform/.env
+        required: false
+    environment:
+      SCM_API_HOST: 0.0.0.0
+      SCM_PG_HOST: postgres
+      SCM_GATEWAY_URL: http://gateway:8000
+      SCM_TWIN_URL: http://twin:8003
+      SCM_GRAPHRAG_URL: http://graphrag:8100
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      gateway:
+        condition: service_healthy
+      twin:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    networks: [scm]
+
+  eval:
+    image: logistics-scm-eval:local
+    build:
+      context: .
+      dockerfile: Agent_Evaluation_Platform/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      EVAL_HOST: 0.0.0.0
+      SCM_PG_HOST: postgres
+      SCM_GATEWAY_URL: http://gateway:8000
+      SCM_API_BASE_URL: http://layer2:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [scm]
+
+  graphrag:
+    image: logistics-scm-graphrag:local
+    build:
+      context: .
+      dockerfile: Enterprise_graphrag/Dockerfile
+    ports:
+      - "8100:8100"
+    environment:
+      GRAPHRAG_HOST: 0.0.0.0
+      SCM_PG_HOST: postgres
+      SCM_GATEWAY_URL: http://gateway:8000
+      SCM_EVAL_URL: http://eval:8002
+      SCM_NEO4J_URI: bolt://neo4j:7687
+      SCM_NEO4J_USER: neo4j
+      SCM_NEO4J_PASSWORD: password
+      SCM_OLLAMA_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health')"]
+      interval: 15s
+      timeout: 8s
+      retries: 12
+      start_period: 40s
+    networks: [scm]
+
+  os:
+    image: logistics-scm-os:local
+    build:
+      context: .
+      dockerfile: Enterprise_AI_Platform/Dockerfile
+    ports:
+      - "8010:8010"
+    environment:
+      OS_HOST: 0.0.0.0
+      SCM_GATEWAY_URL: http://gateway:8000
+      SCM_LAYER2_URL: http://layer2:8001
+      SCM_EVAL_URL: http://eval:8002
+      SCM_TWIN_URL: http://twin:8003
+      SCM_GRAPHRAG_URL: http://graphrag:8100
+      SCM_GATEWAY_API_KEY: ${SCM_GATEWAY_API_KEY:-}
+    depends_on:
+      gateway:
+        condition: service_healthy
+      layer2:
+        condition: service_healthy
+      twin:
+        condition: service_healthy
+      eval:
+        condition: service_healthy
+      graphrag:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [scm]
+
+volumes:
+  postgres_data:
+  redis_data:
+  neo4j_data:
+
+networks:
+  scm:
+    driver: bridge

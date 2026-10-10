@@ -1,0 +1,28 @@
+{
+  "workflow": "disruption",
+  "status": "RECOMMENDED",
+  "recommendation": {
+    "vendor_id": "VEND-ABC",
+    "material_id": "MAT-SEMI-1",
+    "short_plants": [
+      { "plant_id": "PL-IN-CHN", "days_of_cover": 5, "horizon_days": 18, "shortage_units": 1300, "daily_demand": 100 },
+      { "plant_id": "PL-IN-BLR", "days_of_cover": 8, "horizon_days": 18, "shortage_units": 1000, "daily_demand": 100 }
+    ],
+    "affected_po_ids": ["PO-1842"],
+    "reallocate": { "po_id": "PO-1842", "qty": 160, "pct_of_po": 40, "po_quantity": 400 },
+    "alternate": {
+      "vendor_id": "VEND-C",
+      "lead_days": 7,
+      "premium_pct": 8.0,
+      "cover_pct": 60.0,
+      "unit_price": 11.2,
+      "weekly_capacity": 1380
+    },
+    "expedite_rfq": true,
+    "shortage_units": 2300,
+    "summary": "Treat VEND-C as the Taiwan alternate."
+  },
+  "agent_results": {
+    "Procurement_Agent": { "status": "OK", "summary": "Awarded VEND-C." }
+  }
+}

@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  neo4j:
+    image: neo4j:5.12.0-community
+    container_name: logistics_neo4j
+    hostname: logistics_neo4j
+    ports:
+      - "7474:7474" # HTTP Web console
+      - "7687:7687" # Bolt protocol
+    volumes:
+      - neo4j_data:/data
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+      - neo4j_logs:/logs
+    environment:
+      - NEO4J_AUTH=neo4j/password # Default credentials: username=neo4j, password=password
+      - NEO4J_PLUGINS=["apoc"]     # Pre-load popular APOC plugin for graph algorithms/utilities
+
+volumes:
+  neo4j_data:
+  neo4j_import:
+  neo4j_plugins:
+  neo4j_logs:

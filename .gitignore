@@ -1,0 +1,48 @@
+# Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Secrets — keep *.example
+.env
+**/.env
+!.env.example
+!**/.env.example
+
+# Node / OS UI build
+**/node_modules/
+**/dist/
+
+# Local DBs and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# OS / IDE / scratch
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+temp.txt
+*.tmp
+
+# Ignore markdown files outside the main project directory.
+# Keep only the root-level repo docs tracked.
+**/*.md
+!README.md
+
+# Ignore project folders that are not part of the main repo surface.
+docs/
+deploy/
+plan_original.md

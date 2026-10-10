@@ -1,0 +1,31 @@
+# Secrets (Gateway virtual key)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated SQLite seed (source is database/northwind.sql)
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+plan.md

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GraphRAG search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Keep tokens in sync with AI_Gateway/src/gateway/admin_ui/style.css */
+    :root {
+      --bg-dark: #0f111a;
+      --bg-panel: rgba(25, 28, 41, 0.6);
+      --text-main: #f0f2f8;
+      --text-muted: #8b92a5;
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      --secondary: #ec4899;
+      --accent: #14b8a6;
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --font-family: "Outfit", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14.5px/1.45 var(--font-family); color: var(--text-main); background: var(--bg-dark); min-height: 100vh; overflow-x: hidden; }
+    .background-blobs { position: fixed; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; }
+    .blob { position: absolute; filter: blur(80px); opacity: 0.4; border-radius: 50%; animation: float 20s ease-in-out infinite alternate; }
+    .blob.primary { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); }
+    .blob.secondary { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, var(--secondary) 0%, transparent 70%); animation-delay: -10s; }
+    @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(5%, 10%) scale(1.1); } }
+    header {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+      color: #fff; padding: 16px 22px;
+    }
+    main { padding: 20px 22px 48px; max-width: 960px; position: relative; z-index: 1; }
+    .muted { color: var(--text-muted); }
+    textarea, input {
+      width: 100%; font: inherit; border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px;
+      background: rgba(0,0,0,0.2); color: var(--text-main);
+    }
+    button {
+      font: inherit; border: 0; background: var(--primary); color: #fff; border-radius: 8px;
+      padding: 0.7rem 1.2rem; cursor: pointer; font-weight: 600;
+    }
+    button:hover { box-shadow: 0 0 20px var(--primary-glow); }
+    button.ghost { background: rgba(255,255,255,0.1); color: white; }
+    .row { display: flex; gap: 8px; margin: 10px 0 16px; flex-wrap: wrap; }
+    .card {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border); border-radius: 16px; padding: 14px; margin-bottom: 10px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    .cite { font-size: 12px; color: var(--accent); }
+    .path { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--accent); }
+    .hops { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 12px; padding: 0; list-style: none; }
+    .hops li { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: rgba(20, 184, 166, 0.15); color: var(--accent); padding: 3px 8px; border-radius: 999px; }
+    .hops li.rel { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+    pre { white-space: pre-wrap; font-size: 13px; }
+    code { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="background-blobs" aria-hidden="true">
+    <div class="blob primary"></div>
+    <div class="blob secondary"></div>
+  </div>
+  <header>
+    <div class="muted" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase">Layer 3</div>
+    <strong>Enterprise GraphRAG</strong>
+  </header>
+  <main>
+    <p class="muted">Hybrid retrieve (vector + BM25 + graph). Templates only — free Cypher is disallowed.</p>
+    <textarea id="q" rows="3">Which open orders and plants are exposed if VEND-ABC shuts down?</textarea>
+    <div class="row">
+      <button type="button" id="retrieve">Retrieve</button>
+      <button type="button" id="answer">Answer</button>
+      <button type="button" class="ghost" id="plan">Plan only</button>
+    </div>
+    <div id="out"></div>
+  </main>
+  <script>
+    const out = document.getElementById("out");
+    async function post(path, body) {
+      const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      return r.json();
+    }
+    document.getElementById("retrieve").onclick = async () => {
+      const data = await post("/v1/retrieve", { query: document.getElementById("q").value, k: 8 });
+      out.innerHTML = "";
+      renderRetrieve(data);
+    };
+    document.getElementById("answer").onclick = async () => {
+      const data = await post("/v1/answer", { query: document.getElementById("q").value, k: 8 });
+      out.innerHTML = `<div class="card"><strong>Answer</strong><p>${escapeHtml(data.answer || "")}</p>
+        <div class="muted">confidence ${data.confidence} abstained ${data.abstained}</div></div>`;
+      renderRetrieve(data.retrieval || data);
+    };
+    document.getElementById("plan").onclick = async () => {
+      const data = await post("/v1/graph/plan", { query: document.getElementById("q").value });
+      out.innerHTML = "";
+      renderPlan(data);
+    };
+    function renderPlan(plan) {
+      if (!plan) return;
+      out.innerHTML += `<div class="card"><strong>Planned template</strong>
+        <p><code>${escapeHtml(plan.template || "—")}</code>
+        ${plan.key ? ` · key <code>${escapeHtml(plan.key)}</code>` : ""}
+        ${plan.hops != null ? ` · hops ${plan.hops}` : ""}</p>
+        <p class="muted">${escapeHtml(plan.note || "Templates only.")}</p>
+        ${plan.anchors && plan.anchors.length ? `<p class="muted">anchors ${plan.anchors.map(escapeHtml).join(", ")}</p>` : ""}
+      </div>`;
+    }
+    function hopList(path) {
+      const text = typeof path === "string" ? path : (path && path.path) || "";
+      if (!text) return "";
+      const parts = text.split(/\s*-\[|\]->\s*|\s*->\s*/).map((s) => s.replace(/^\[/, "").trim()).filter(Boolean);
+      if (parts.length < 2) return `<div class="path">${escapeHtml(text)}</div>`;
+      const items = parts.map((p, i) => `<li class="${i % 2 ? "rel" : ""}">${escapeHtml(p)}</li>`).join("");
+      return `<ul class="hops">${items}</ul>`;
+    }
+    function renderRetrieve(data) {
+      const plan = data.planned_query || {};
+      if (plan.template || data.graph_template) {
+        renderPlan({ ...plan, template: data.graph_template || plan.template });
+      }
+      const paths = (data.graph_paths || []).map(p => hopList(p)).join("");
+      const passages = (data.passages || []).map(p =>
+        `<div class="card"><div class="cite">${escapeHtml(p.citation || "")}</div><div>${escapeHtml((p.text || "").slice(0, 500))}</div></div>`
+      ).join("");
+      out.innerHTML += `<div class="muted">intent ${data.intent || ""} · ${(data.strategies || []).join(", ")}</div>
+        <h3>Hop list</h3>${paths || "<p class='muted'>none</p>"}<h3>Passages</h3>${passages}`;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+  </script>
+</body>
+</html>

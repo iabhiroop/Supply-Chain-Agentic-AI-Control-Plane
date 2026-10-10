@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evaluation explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Keep tokens in sync with AI_Gateway/src/gateway/admin_ui/style.css */
+    :root {
+      --bg-dark: #0f111a;
+      --bg-panel: rgba(25, 28, 41, 0.6);
+      --text-main: #f0f2f8;
+      --text-muted: #8b92a5;
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      --secondary: #ec4899;
+      --accent: #14b8a6;
+      --danger: #ef4444;
+      --success: #10b981;
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --font-family: "Outfit", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14.5px/1.45 var(--font-family); color: var(--text-main); background: var(--bg-dark); min-height: 100vh; overflow-x: hidden; }
+    .background-blobs { position: fixed; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; }
+    .blob { position: absolute; filter: blur(80px); opacity: 0.4; border-radius: 50%; animation: float 20s ease-in-out infinite alternate; }
+    .blob.primary { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, var(--primary) 0%, transparent 70%); }
+    .blob.secondary { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, var(--secondary) 0%, transparent 70%); animation-delay: -10s; }
+    @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(5%, 10%) scale(1.1); } }
+    header {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+      color: #fff; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    main { padding: 20px 22px 48px; position: relative; z-index: 1; }
+    .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; }
+    .panel {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    .panel h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--glass-border); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--glass-border); font-size: 13px; }
+    th { color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; background: rgba(0,0,0,0.1); }
+    tr.clickable:hover { background: rgba(255,255,255,0.03); cursor: pointer; }
+    .pill { display: inline-flex; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: rgba(255,255,255,0.06); color: var(--text-muted); }
+    .ok { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .bad { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi {
+      background: var(--bg-panel); backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border); border-radius: 16px; padding: 12px 14px;
+    }
+    .kpi .v { font-size: 24px; font-weight: 700; }
+    pre { white-space: pre-wrap; font-size: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+    button {
+      font: inherit; border: none; background: rgba(255,255,255,0.1); color: white;
+      border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; font-weight: 600;
+    }
+    .primary { background: var(--primary); color: #fff; }
+    .primary:hover { box-shadow: 0 0 20px var(--primary-glow); }
+    .span { padding: 6px 12px; border-left: 3px solid var(--primary); margin: 6px 12px; font-size: 13px; }
+    .muted { color: var(--text-muted); }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--accent); }
+    button.linkish { border: 0; background: transparent; color: var(--accent); padding: 0; cursor: pointer; font: inherit; font-weight: 500; }
+    @media (max-width: 900px) { .grid, .kpis { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="background-blobs" aria-hidden="true">
+    <div class="blob primary"></div>
+    <div class="blob secondary"></div>
+  </div>
+  <header>
+    <div>
+      <div class="muted" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase">Layer 4</div>
+      <strong>Agent evaluation</strong>
+    </div>
+    <div>
+      <button class="primary" id="gate" type="button">Run CI gate</button>
+      <button id="exp" type="button">Run golden experiment</button>
+    </div>
+  </header>
+  <main>
+    <div class="kpis" id="kpis"></div>
+    <div class="panel" style="margin-bottom:14px">
+      <h3>Scorecard (last Taiwan + last P2P golden)</h3>
+      <div id="scorecard"><p class="muted" style="padding:12px">Loading…</p></div>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <h3>Last-N Taiwan / P2P</h3>
+      <div id="lastn"><p class="muted" style="padding:12px">Loading…</p></div>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <h3>Bake-off (abc_shutdown policy goldens)</h3>
+      <div id="bakeoff">
+        <table>
+          <thead><tr><th>Runtime</th><th>Control plane</th><th>Rec goldens</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>langgraph</strong></td><td>LangGraph nodes</td><td>Pass (production)</td><td>Arithmetic is Python on twin facts</td></tr>
+            <tr><td>crewai</td><td>Thin crew runner</td><td>Pass if twin reachable</td><td>Same build_recommendation</td></tr>
+            <tr><td><strong>mcp</strong></td><td>Twin MCP tools + policy</td><td>Pass if :8003 MCP up</td><td>Real MCP HTTP, not a stub</td></tr>
+            <tr><td>a2a</td><td>Mailbox runner</td><td>Pass if twin reachable</td><td>Same policy</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="padding:10px 12px">Production sitting is LangGraph. Other runtimes are comparison harnesses.</p>
+      </div>
+    </div>
+    <p id="banner" class="muted"></p>
+    <div class="grid">
+      <div class="panel">
+        <h3>Runs</h3>
+        <div id="runs"></div>
+      </div>
+      <div class="panel">
+        <h3>Trace waterfall</h3>
+        <div id="detail"><p class="muted" style="padding:16px">Select a run.</p></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>Scores (append-only)</h3>
+      <div id="scores"></div>
+    </div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function pill(ok) {
+      if (ok === true) return '<span class="pill ok">pass</span>';
+      if (ok === false) return '<span class="pill bad">fail</span>';
+      return '<span class="pill">—</span>';
+    }
+    async function loadScorecard() {
+      const r = await fetch("/v1/scorecard");
+      if (!r.ok) { $("scorecard").innerHTML = "<p class='muted' style='padding:12px'>Scorecard unavailable.</p>"; return; }
+      const d = await r.json();
+      const cards = [d.taiwan, d.p2p].filter(Boolean);
+      if (d.trace_id && d.available) cards.unshift(d);
+      $("scorecard").innerHTML = `<table><thead><tr><th>Job</th><th>Success</th><th>Correctness</th><th>Grounded</th><th>Tools</th><th>Tokens</th><th>Cost</th><th>trace_id</th></tr></thead><tbody>${
+        cards.map(c => `<tr><td>${c.label || c.workflow || ""}</td><td>${pill(c.success)}</td><td>${c.correctness ?? "—"}</td><td>${c.groundedness ?? "—"}</td><td>${c.tools ?? "—"}</td><td>${c.tokens ?? "—"}</td><td>${Number(c.cost_usd || 0).toFixed(4)}</td><td>${traceCell(c.trace_id)}</td></tr>`).join("")
+      }</tbody></table>`;
+    }
+    async function loadMetrics() {
+      const r = await fetch("/v1/metrics/quality");
+      const d = await r.json();
+      const h = (d.quality && d.quality.hard_blockers) || {};
+      const t = (d.quality && d.quality.traces) || {};
+      $("kpis").innerHTML = [
+        ["Hard pass", h.passed],
+        ["Hard fail", h.failed],
+        ["Traces", t.traces],
+        ["Avg cost", Number(t.avg_cost || 0).toFixed(4)],
+      ].map(([l,v]) => `<div class="kpi"><div class="muted">${l}</div><div class="v">${v ?? "—"}</div></div>`).join("");
+    }
+    function traceCell(id) {
+      if (!id) return '<span class="muted">—</span>';
+      return `<button type="button" class="linkish mono" data-copy-trace="${id}" title="Copy">${id}</button>
+        <a class="muted" href="http://127.0.0.1:8000/v1/usage?trace_id=${encodeURIComponent(id)}" target="_blank" rel="noreferrer">usage</a>`;
+    }
+    async function loadLastN() {
+      const r = await fetch("/v1/runs?limit=40");
+      if (!r.ok) { $("lastn").innerHTML = "<p class='muted' style='padding:12px'>Runs unavailable.</p>"; return; }
+      const d = await r.json();
+      const p2p = "aaaaaaaa-bbbb-cccc-dddd-000000000001";
+      const rows = (d.runs || []).filter((x) => {
+        const wf = String(x.workflow || "").toLowerCase();
+        return wf.includes("disruption") || wf.includes("taiwan") || x.transaction_id === p2p || wf.includes("p2p") || wf.includes("execution");
+      }).slice(0, 8);
+      const body = rows.map((x) => `
+        <tr class="clickable" data-trace="${x.trace_id || ""}">
+          <td>${x.workflow || x.transaction_id || x.run_id}</td>
+          <td>${x.status || ""}</td>
+          <td>${x.summary || ""}</td>
+          <td>${traceCell(x.trace_id)}</td>
+        </tr>`).join("");
+      $("lastn").innerHTML = `<table><thead><tr><th>Job</th><th>Status</th><th>Summary</th><th>trace_id</th></tr></thead><tbody>${body || "<tr><td class='muted' colspan='4' style='padding:12px'>No Taiwan/P2P runs yet.</td></tr>"}</tbody></table>`;
+    }
+    async function loadRuns() {
+      const r = await fetch("/v1/runs");
+      const d = await r.json();
+      const rows = (d.runs || []).map(x => `
+        <tr class="clickable" data-trace="${x.trace_id || ""}">
+          <td>${x.transaction_id || x.run_id}</td>
+          <td>${x.status || ""}</td>
+          <td>${x.summary || ""}</td>
+        </tr>`).join("");
+      $("runs").innerHTML = `<table><thead><tr><th>Job</th><th>Status</th><th>Summary</th></tr></thead><tbody>${rows || "<tr><td>No runs. Score a Layer 2 job or run the gate.</td></tr>"}</tbody></table>`;
+    }
+    async function openTrace(id) {
+      if (!id) return;
+      const r = await fetch("/v1/traces/" + id);
+      if (!r.ok) { $("detail").innerHTML = "<p class='muted' style='padding:16px'>Trace not found.</p>"; return; }
+      const t = await r.json();
+      const spans = (t.spans || []).map(s => `<div class="span"><strong>${s.name}</strong> ${s.kind} ${s.status}<div class="muted">${s.span_id} ← ${s.parent_span_id || "root"}</div></div>`).join("");
+      $("detail").innerHTML = `<div style="padding:12px"><p><strong>${t.trace_id}</strong> ${t.workflow || ""} ${t.status || ""}</p>${spans || "<p class='muted'>No spans.</p>"}</div>`;
+      const scores = (t.scores || []).map(s => `<tr><td>${s.scorer}</td><td>${s.metric}</td><td>${s.value}</td><td>${pill(s.passed)}</td><td>${s.rationale || ""}</td></tr>`).join("");
+      $("scores").innerHTML = `<table><thead><tr><th>Scorer</th><th>Metric</th><th>Value</th><th></th><th>Why</th></tr></thead><tbody>${scores}</tbody></table>`;
+    }
+    $("gate").onclick = async () => {
+      $("banner").textContent = "Running gate…";
+      const r = await fetch("/v1/gates/check", { method: "POST" });
+      const d = await r.json();
+      $("banner").textContent = d.verdict + " — " + d.summary;
+      await loadMetrics(); await loadRuns(); await loadScorecard(); await loadLastN();
+    };
+    $("exp").onclick = async () => {
+      $("banner").textContent = "Running experiment…";
+      const r = await fetch("/v1/experiments", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({name:"ui"}) });
+      const d = await r.json();
+      $("banner").textContent = "Experiment " + d.experiment_id + "  " + d.passed + "/" + d.total;
+      await loadMetrics(); await loadRuns(); await loadScorecard(); await loadLastN();
+    };
+    document.body.addEventListener("click", (e) => {
+      const copy = e.target.closest("[data-copy-trace]");
+      if (copy && copy.dataset.copyTrace) {
+        navigator.clipboard.writeText(copy.dataset.copyTrace).catch(() => {});
+        $("banner").textContent = "Copied " + copy.dataset.copyTrace;
+        e.stopPropagation();
+        return;
+      }
+      const row = e.target.closest("[data-trace]");
+      if (row && row.dataset.trace) openTrace(row.dataset.trace);
+    });
+    loadMetrics(); loadRuns(); loadScorecard(); loadLastN();
+  </script>
+</body>
+</html>

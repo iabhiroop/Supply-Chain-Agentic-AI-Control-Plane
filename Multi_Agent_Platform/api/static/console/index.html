@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/console/console.css" />
+</head>
+<body>
+  <div class="background-blobs" aria-hidden="true">
+    <div class="blob primary"></div>
+    <div class="blob secondary"></div>
+  </div>
+  <div class="app">
+    <aside class="nav glass-panel" id="shell-nav">
+      <button class="menu-toggle" type="button" id="nav-toggle" aria-label="Toggle navigation">Menu</button>
+      <div class="brand">
+        <div class="kicker">System of execution</div>
+        <h1>Agent command</h1>
+      </div>
+      <nav class="nav-items" id="nav-items">
+        <button class="item active" data-view="team" type="button">Team</button>
+        <button class="item" data-view="jobs" type="button">Jobs</button>
+        <button class="item" data-view="inbox" type="button">B2B inbox</button>
+        <button class="item" data-view="hitl" type="button">Needs you</button>
+        <button class="item" data-view="memory" type="button">Memory</button>
+        <button class="item" data-view="playbooks" type="button">Playbooks</button>
+      </nav>
+      <div class="foot" id="site-label">WH-FR-01</div>
+    </aside>
+
+    <main>
+      <header class="top">
+        <div>
+          <h2 id="view-title">Team</h2>
+          <p id="view-sub">Four specialists plus two supplier agents. The orchestrator only picks who goes next.</p>
+        </div>
+        <div class="job-chip glass-panel" id="job-chip">
+          <span class="muted">Selected job</span>
+          <strong id="job-chip-pr">None</strong>
+          <span id="job-chip-stage" class="pill intent">—</span>
+        </div>
+        <div class="top-actions">
+          <select id="role" title="Copilot role">
+            <option value="warehouse_worker">Operator</option>
+            <option value="warehouse_manager" selected>Manager (policy / GL)</option>
+          </select>
+          <button class="primary" type="button" id="open-copilot">Open copilot</button>
+        </div>
+      </header>
+
+      <p class="policy-bar" id="policy-bar">Policy: quotes must stay within ±5% of last price. Delay slip ≤ 5 days auto-rebooks. PO over $5,000 needs a human.</p>
+
+      <section id="view-team"></section>
+      <section id="view-jobs" class="hidden"></section>
+      <section id="view-inbox" class="hidden"></section>
+      <section id="view-hitl" class="hidden"></section>
+      <section id="view-memory" class="hidden"></section>
+      <section id="view-playbooks" class="hidden"></section>
+    </main>
+  </div>
+
+  <button class="fab" type="button" id="fab">Copilot</button>
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer" id="drawer" aria-label="Execution copilot">
+    <header>
+      <div>
+        <h3>Execution copilot</h3>
+        <p>Reads chat_ro only. It cannot create a PO or pay a vendor. Manager role sees policy and GL.</p>
+      </div>
+      <button class="ghost" type="button" id="close-copilot">Close</button>
+    </header>
+    <div id="log"></div>
+    <form class="composer" id="f">
+      <input id="q" autocomplete="off" placeholder="Ask about PR-1001, quotes, or who owns this stage…" />
+      <button class="primary" type="submit">Send</button>
+    </form>
+  </aside>
+
+  <script src="/console/console.js" defer></script>
+</body>
+</html>

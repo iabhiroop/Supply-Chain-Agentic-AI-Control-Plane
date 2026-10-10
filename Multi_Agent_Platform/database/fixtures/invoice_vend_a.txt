@@ -1,0 +1,5 @@
+INVOICE INV-A-1001
+Vendor VEND-A Asturias Dairy Coop
+PO PO-1001
+Qty 20 MAT-11 @ 10.20
+Total 204.00

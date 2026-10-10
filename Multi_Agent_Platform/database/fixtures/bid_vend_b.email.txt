@@ -1,0 +1,4 @@
+Subject: Bid MAT-11
+From: bids@cantabria.example
+
+Offer 20 units at 10.50 EUR, lead 8 days, FOB.

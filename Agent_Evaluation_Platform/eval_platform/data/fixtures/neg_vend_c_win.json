@@ -1,0 +1,24 @@
+{
+  "transaction": {
+    "transaction_id": "fixture-vend-c",
+    "stage": "PO_ISSUED",
+    "status": "OPEN",
+    "context": {}
+  },
+  "material": { "last_price": 10 },
+  "policy": { "price_deviation_pct": 5 },
+  "quotes": [
+    { "vendor_id": "VEND-A", "unit_price": 10.20 },
+    { "vendor_id": "VEND-B", "unit_price": 10.10 },
+    { "vendor_id": "VEND-C", "unit_price": 11.20 }
+  ],
+  "po": { "vendor_id": "VEND-C", "unit_price": 11.20, "quantity": 20 },
+  "actions": [
+    { "agent_name": "Sourcing_Agent", "action_type": "ISSUE_RFQ" },
+    { "agent_name": "Procurement_Agent", "action_type": "CREATE_PO" }
+  ],
+  "agent_results": {
+    "Sourcing_Agent": { "status": "OK", "summary": "Collected three quotes." },
+    "Procurement_Agent": { "status": "OK", "summary": "Issued PO to VEND-C." }
+  }
+}
